@@ -1,0 +1,43 @@
+// 부트는 필요 없으니, 부트 의존은 제거
+
+plugins {
+  id 'java'
+
+  // 구글 검색 - gradle plugins 검색 - shadow 검색 - com.gradleup.shadow 선택
+  // 프로젝트의 Gradle 버전과 Java(JDK) 버전에 따라 버전 선택
+  // id("com.gradleup.shadow") version "9.6.1"
+  id 'com.gradleup.shadow' version '9.6.1'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(21)
+  }
+}
+
+repositories {
+  mavenCentral() 
+}
+
+dependencies {
+  // AWS Lambda Core (Context, RequestHandler 등)
+  implementation 'com.amazonaws:aws-lambda-java-core:1.4.0'
+}
+
+// 컴파일 시 UTF-8 강제
+tasks.withType(JavaCompile).configureEach {
+  options.encoding = 'UTF-8'
+}
+
+// ShadowJar 파일명 설정 (-all 접미사 제거)
+tasks.named('shadowJar') {
+  archiveClassifier.set('')
+}
+
+// build 실행 시 shadowJar 자동 실행 연결 (Lazy 방식)
+tasks.named('build') {
+  dependsOn tasks.named('shadowJar')
+}
