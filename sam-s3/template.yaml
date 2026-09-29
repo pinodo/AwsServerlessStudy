@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Sample SAM Template for sam-s3
+
+Globals:
+  Function:
+    Timeout: 20
+    MemorySize: 512
+
+Resources:
+  # S3
+  ProfileBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "simple-profile-bucket-${AWS::AccountId}-sesac-b2"
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedOrigins: ['*']
+            AllowedMethods: [GET, POST, PUT, DELETE, HEAD]
+
+  # 람다
+  ProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ProfileBucket
+      AutoPublishAlias: live  # 스냅스타트는 버전 관리가 필수이므로 이 속성이 필수입니다.
+      SnapStart:
+        ApplyOn: PublishedVersions
+      CodeUri: s3Function
+      Handler: com.example.user.ProfileHandler::handleRequest
+      Runtime: java21
+      Architectures:
+        - x86_64
+      MemorySize: 2048
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref ProfileBucket
+      Events:
+        ApiGatewayRestApi:
+          Type: Api
+          Properties:
+            Path: /api/users/profile/getPresignedUrl
+            Method: post
+
+Outputs:
+  ApiGatewayRestApi:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/api/users/profile/getPresignedUrl/"

@@ -1,0 +1,69 @@
+#=== 1. 문서 버전 정의 ===
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  sam-basic
+
+  Sample SAM Template for sam-basic
+
+#=== 2. 전역 설정 (모든 함수에 공통적으로 적용할 설정) ===
+Globals:
+  Function:
+    Timeout: 20
+    MemorySize: 512
+
+#=== 3. 리소스 정의 (Lambda, API Gateway, DB 등 정의) ===
+Resources:
+  # 리소스 이름: HelloWorldFunction (마음대로, AWS CloudFormation이 식별하는 ID)
+  HelloWorldFunction:
+    # 리소스 타입: Lambda를 의미하는 SAM 전용 타입
+    Type: AWS::Serverless::Function
+    # 프로퍼티 설정
+    Properties:
+      # 소스 코드가 저장된 폴더 이름 (상대 경로로 작성, 이 안에 build.gradle 있어야 함)
+      CodeUri: HelloWorldFunction
+      # 람다 함수 (패키지.클래스::메서드)
+      Handler: helloworld.App::handleRequest
+      # 런타임
+      Runtime: java21
+      # CPU 아키텍처 (x86_64 또는 arm64)
+      Architectures:
+        - x86_64
+      # 사용할 메모리 크기
+      MemorySize: 512
+      # 환경 변수
+      Environment:
+        # 변수명: 값
+        Variables:
+          PARAM1: VALUE
+      # 람다 함수를 실행시킬 이벤트 트리거
+      Events:
+        # 이벤트 이름: HelloWorld (마음대로 작성, SAM 내부에서 사용하는 ID)
+        HelloWorld:
+          # API Gateway에 의해 트리거: Api(REST API), HttpApi(HTTP API)
+          Type: Api
+          Properties:
+            # 엔드포인트
+            Path: /hello
+            # HTTP 메서드
+            Method: get
+
+#=== 4. 배포 후 화면에 출력할 정보 ===
+Outputs:
+  # 출력 변수 이름: HelloWorldApi (마음대로, 배포 후 터미널에서 확인 가능)
+  HelloWorldApi:
+    Description: "API Gateway endpoint URL for Prod stage for Hello World function"
+    # Value: !Sub "${리소스이름}" -> SAM은 이걸 보고 Resources 섹션에서 리소스를 찾아옴. 찾아서 그 리소스의 물리적 ID(API ID)로 치환함.
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/hello/"
+  
+  # 출력 변수 이름: HelloWorldFunction
+  HelloWorldFunction:
+    Description: "Hello World Lambda Function ARN"
+    # HelloWorldFunction 리소스의 ARN
+    Value: !GetAtt HelloWorldFunction.Arn
+  
+  # 출력 변수 이름: HelloWorldFunctionIamRole
+  HelloWorldFunctionIamRole:
+    Description: "Implicit IAM Role created for Hello World function"
+    # HelloWorldFunctionRole 리소스의 ARN (SAM이 스스로 만든 리소스)
+    Value: !GetAtt HelloWorldFunctionRole.Arn

@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SAM practice project for user service with SnapStart optimization
+
+Globals:
+  Function:
+    Timeout: 20
+    MemorySize: 2048                 # 메모리 할당량 증설 (512 -> 2048)
+    Runtime: java21                  # Java 21 최신 런타임 적용
+    Architectures:
+      - x86_64                       # SnapStart 적용을 위한 x86_64 고정
+
+Resources:
+
+  UserFunction:                      # 람다 리소스 논리 이름
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: user/UserFunction
+      Handler: com.example.user.UserHandler::handleRequest
+      AutoPublishAlias: live         # SnapStart 사용을 위한 별칭 설정 (필수)
+      SnapStart:
+        ApplyOn: PublishedVersions   # SnapStart 켜기 (Java 콜드 스타트 최적화)
+      Events:
+        GetUser:
+          Type: Api
+          Properties:
+            Path: /api/users/{id}
+            Method: get
+
+Outputs:
+  UserApi:
+    Description: "API Gateway endpoint URL for User Service"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/api/users/"

@@ -1,0 +1,36 @@
+// 단순한 Java Lambda 프로젝트에서는 Shadow 플러그인이 없어도 SAM CLI가 알아서 의존성을 포함한 Jar 배포본을 빌드함
+// 따라서, Shadow 플러그인 및 Fat JAR 설정 불필요
+plugins {
+  id 'java'
+  // 불필요) id 'com.gradleup.shadow' version '9.6.1'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(21)
+  }
+}
+
+repositories {
+  mavenCentral() 
+}
+
+dependencies {
+  implementation 'com.amazonaws:aws-lambda-java-core:1.4.0'
+  implementation 'com.amazonaws:aws-lambda-java-events:3.16.1'
+}
+
+tasks.withType(JavaCompile).configureEach {
+  options.encoding = 'UTF-8'
+}
+
+// Fat JAR 설정 불필요
+// tasks.named('shadowJar') {
+//   archiveClassifier.set('')
+// }
+// tasks.named('build') {
+//   dependsOn tasks.named('shadowJar')
+// }
