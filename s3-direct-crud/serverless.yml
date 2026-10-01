@@ -1,0 +1,57 @@
+service: s3-direct-crud
+
+provider:
+  name: aws
+  runtime: java21
+  region: ap-northeast-2
+  memorySize: 2048
+  timeout: 20
+  environment:
+    BUCKET_NAME: ${self:custom.bucketName}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:DeleteObject
+            - s3:ListBucket
+          Resource:
+            # S3 버킷 자체 & 버킷에 저장된 객체를 대상으로 함
+            - arn:aws:s3:::${self:custom.bucketName}
+            - arn:aws:s3:::${self:custom.bucketName}/*
+
+custom:
+  # 본인 계정으로 변경
+  userName: sesac-b2
+  bucketName: s3-crud-bucket-${aws:accountId}-${self:custom.userName}
+
+package:
+  artifact: build/libs/s3-direct-crud-sesac-b2-0.0.1-SNAPSHOT.jar
+
+functions:
+  s3Handler:
+    handler: com.example.s3.controller.S3CrudHandlerSesacB2::handleRequest
+    snapStart: true
+    events:
+      - httpApi:
+          path: /api/s3/files
+          method: post
+      - httpApi:
+          path: /api/s3/files
+          method: get
+      # {key+}: 경로에 포함된 모든 하위 슬래시(/)를 하나의 전체 경로 문자열로 캡처함
+      - httpApi:
+          path: /api/s3/files/{key+}
+          method: get
+      - httpApi:
+          path: /api/s3/files/{key+}
+          method: delete
+
+resources:
+  Resources:
+    CrudBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.bucketName}
