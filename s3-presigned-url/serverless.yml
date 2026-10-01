@@ -1,0 +1,97 @@
+service: s3-presigned-url
+
+provider:
+  name: aws
+  runtime: java21
+  region: ap-northeast-2
+  memorySize: 2048
+  timeout: 20
+  environment:
+    TABLE_NAME: ${self:custom.tableName}
+    BUCKET_NAME: ${self:custom.bucketName}
+  httpApi:
+    cors: true
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:custom.tableName}
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+            - s3:ListBucket
+          Resource:
+            - arn:aws:s3:::${self:custom.bucketName}
+            - arn:aws:s3:::${self:custom.bucketName}/*
+
+custom:
+  # 본인 계정으로 변경
+  userName: sesac-b2
+  tableName: product-table-${self:custom.userName}
+  bucketName: s3-presigned-bucket-${aws:accountId}-${self:custom.userName}
+
+package:
+  artifact: build/libs/s3-presigned-url-sesac-b2-0.0.1-SNAPSHOT.jar
+
+functions:
+  imageHandler:
+    handler: com.example.image.controller.ImageHandlerSesacB2::handleRequest
+    snapStart: true
+    events:
+      - httpApi:
+          path: /api/images/upload-url
+          method: post
+
+  productHandler:
+    handler: com.example.product.controller.ProductHandler::handleRequest
+    snapStart: true
+    events:
+      - httpApi:
+          path: /api/products
+          method: post
+      - httpApi:
+          path: /api/products/{productId}
+          method: get
+
+resources:
+  Resources:
+    ProductTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableName}
+        AttributeDefinitions:
+          - AttributeName: productId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: productId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    UploadBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.bucketName}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              AllowedOrigins:
+                - '*'
+              ExposedHeaders:
+                - ETag
+              MaxAge: 3000
