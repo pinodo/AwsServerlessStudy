@@ -1,0 +1,22 @@
+service: sls-basic
+
+provider:
+  name: aws
+  runtime: java21
+  region: ap-northeast-2
+  memorySize: 2048         # CPU 파워 증가로 Cold Start 완화
+  timeout: 20              # Cold Start 대비 안전장치
+  architecture: x86_64
+
+package:
+  # Gradle 빌드 후 생성되는 jar 파일 위치
+  artifact: build/libs/sls-basic-0.0.1-SNAPSHOT.jar
+
+functions:
+  getUser:
+    handler: com.example.user.UserHandler::handleRequest
+    snapStart: true  # SnapStart 활성화 및 Lambda Version 발행
+    events:
+      - httpApi:
+          path: /api/users/{id}
+          method: get
