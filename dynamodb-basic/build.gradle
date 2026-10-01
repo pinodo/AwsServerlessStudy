@@ -1,0 +1,42 @@
+plugins {
+  id 'java'
+  id 'com.gradleup.shadow' version '9.6.1'
+}
+
+group = 'com.example'
+version = 'sesac-b2-0.0.1-SNAPSHOT'
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(21)
+  }
+}
+
+repositories {
+  mavenCentral() 
+}
+
+dependencies {
+  implementation 'com.amazonaws:aws-lambda-java-core:1.4.0'
+  implementation 'com.amazonaws:aws-lambda-java-events:3.16.1'
+  
+  implementation platform('software.amazon.awssdk:bom:2.54.9')
+  implementation 'software.amazon.awssdk:url-connection-client'
+  implementation 'software.amazon.awssdk:dynamodb-enhanced'
+  
+  compileOnly 'org.projectlombok:lombok:1.18.36'
+  annotationProcessor 'org.projectlombok:lombok:1.18.36'
+  implementation 'com.fasterxml.jackson.core:jackson-databind:2.22.2'
+}
+
+tasks.withType(JavaCompile).configureEach {
+  options.encoding = 'UTF-8'
+}
+
+tasks.named('shadowJar') {
+  archiveClassifier.set('')
+}
+
+tasks.named('build') {
+  dependsOn tasks.named('shadowJar')
+}

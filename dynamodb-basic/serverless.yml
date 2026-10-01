@@ -1,0 +1,62 @@
+service: dynamodb-basic-sesac-b2
+
+provider:
+  name: aws
+  runtime: java21
+  region: ap-northeast-2
+  architecture: x86_64
+  memorySize: 2048         # CPU 파워 증가로 Cold Start 완화
+  timeout: 20              # Cold Start 대비 안전장치
+  environment:
+    TABLE_NAME: ${self:custom.tableName}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource: !GetAtt UserTable.Arn
+
+custom:
+  userName: sesac-b2
+  tableName: user-table-${self:custom.userName}
+
+package:
+  artifact: build/libs/dynamodb-basic-sesac-b2-0.0.1-SNAPSHOT.jar
+
+functions:
+  userHandler:
+    handler: com.example.user.controller.UserHandler::handleRequest
+    snapStart: true  # SnapStart 활성화 및 Lambda Version 발행
+    events:
+      - httpApi:
+          path: /api/users
+          method: post
+      - httpApi:
+          path: /api/users/{userId}
+          method: get
+      - httpApi:
+          path: /api/users/{userId}
+          method: put
+      - httpApi:
+          path: /api/users/{userId}
+          method: delete
+
+resources:
+  Resources:
+    UserTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableName}
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
