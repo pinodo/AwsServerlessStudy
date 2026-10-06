@@ -1,0 +1,98 @@
+service: cognito-direct-backend
+
+provider:
+  name: aws
+  runtime: java21
+  region: ap-northeast-2
+  memorySize: 2048
+  timeout: 20
+  architecture: x86_64
+  httpApi:
+    # CORS 설정 (React 프론트엔드 통신용)
+    cors:
+      allowedOrigins:
+        - 'http://localhost:5173' # Vite 개발 서버 허용
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - HEAD
+        - OPTIONS
+      maxAge: 3000  # Preflight 요청 캐싱 시간 3000초(50분 이내엔 재요청 안 함)
+
+    # API Gateway 내장 Cognito JWT Authorizer 정의
+    authorizers:
+      CognitoJwtAuthorizer:
+        type: jwt
+        identitySource: $request.header.Authorization
+        # Cognito Issuer URL 구성
+        issuerUrl:
+          Fn::Sub: "https://cognito-idp.${aws:region}.amazonaws.com/${UserPool}"
+        # aud: 이 토큰이 어떤 클라이언트 애플리케이션을 위해 발급된 것인가?
+        audience:
+          - Ref: UserPoolClient
+
+package:
+  artifact: build/libs/cognito-direct-backend-0.0.1-SNAPSHOT.jar
+
+functions:
+  getProfile:
+    handler: com.example.auth.ProfileHandlerSesacB2::handleRequest
+    snapStart: true
+    events:
+      - httpApi:
+          method: GET
+          path: /api/user/profile
+          authorizer:
+            name: CognitoJwtAuthorizer # 위에서 정의한 Cognito Authorizer 적용
+
+# CloudFormation 리소스 정의 (Cognito User Pool 및 Client 자동 생성)
+resources:
+  Resources:
+    # A. Cognito User Pool (사용자 디렉터리)
+    UserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: direct-auth-user-pool-${sls:stage}
+        UsernameAttributes:
+          - email            # ID 대신 이메일로 로그인
+        AutoVerifiedAttributes:
+          - email            # 이메일 자동 검증 활성화
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireUppercase: true
+            RequireLowercase: true
+            RequireNumbers: true
+            RequireSymbols: false
+
+    # B. Cognito User Pool Client (React 앱이 통신할 클라이언트 설정)
+    UserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: direct-auth-client-${sls:stage}
+        UserPoolId: !Ref UserPool
+        # SPA(React) 환경에서는 Client Secret 미생성 (보안 필수)
+        GenerateSecret: false
+        # 사용을 허용할 인증 메서드 유형
+        ExplicitAuthFlows:
+          - ALLOW_USER_SRP_AUTH      # AWS Cognito 기본 비밀번호 인증 방식
+          - ALLOW_REFRESH_TOKEN_AUTH # Refresh Token 기반 토큰 재발급
+          - ALLOW_USER_PASSWORD_AUTH # ID/PW 직접 입력 방식
+
+# 배포 완료 후 출력되는 결과값 (프론트엔드 .env 설정용)
+outputs:
+  UserPoolId:
+    Description: "Cognito User Pool ID"
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Description: "Cognito User Pool Client ID"
+    Value: !Ref UserPoolClient
+  ApiEndpoint:
+    Description: "API Gateway Base Endpoint URL"
+    Value:
+      Fn::Sub: "https://${SLSHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
