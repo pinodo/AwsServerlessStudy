@@ -1,0 +1,39 @@
+service: authorizer-jwt
+
+provider:
+  name: aws
+  runtime: java21
+  region: ap-northeast-2
+  memorySize: 2048
+  timeout: 20
+  architecture: x86_64
+  httpApi:
+    # HTTP API v2 Lambda Custom Authorizer 설정
+    authorizers:
+      JwtCustomAuthorizer:
+        type: request
+        functionName: jwtAuthorizer
+        enableSimpleResponses: true  # HTTP API v2 Simple Response (isAuthorized, context 맵) 사용
+        payloadVersion: '2.0'
+        identitySource:
+          - $request.header.Authorization
+
+package:
+  artifact: build/libs/authorizer-jwt-0.0.1-SNAPSHOT.jar
+
+functions:
+  # JWT Authorizer 함수
+  jwtAuthorizer:
+    handler: com.example.jwt.JwtAuthorizerHandler::handleRequest
+    snapStart: true
+
+  # 메인 유저 프로필 조회 API 함수
+  getUser:
+    handler: com.example.jwt.UserHandler::handleRequest
+    snapStart: true
+    events:
+      - httpApi:
+          method: GET
+          path: /api/jwt
+          authorizer:
+            name: JwtCustomAuthorizer
